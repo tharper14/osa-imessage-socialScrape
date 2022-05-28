@@ -1,3 +1,7 @@
+const linkPath = '/Users/socialscrape/Social Wake Dropbox/Social Scrape/testLinks.txt' 
+const logPath = '/Users/socialscrape/Social Wake Dropbox/Social Scrape/testLog.txt'
+
+
 const fs = require('fs')
 const osa = require('osa2')
 const ol = require('one-liner')
@@ -8,6 +12,11 @@ const versions = require('./macos_versions')
 const currentVersion = macosVersion()
 
 const messagesDb = require('./lib/messages-db.js')
+
+var linkScrape = fs.createWriteStream(linkPath, {
+    flags: 'a' // 'a' means appending (old data will be preserved)
+  })
+  var writeLink = (line) => linkScrape.write(`\n${line}`);
 
 function warn(str) {
     if (!process.env.SUPPRESS_OSA_IMESSAGE_WARNINGS) {
@@ -185,19 +194,50 @@ async function getRecentChats(limit = 10) {
 
     const query = `
         SELECT
-            guid as id,
-            chat_identifier as recipientId,
-            service_name as serviceName,
-            room_name as roomName,
-            display_name as displayName
-        FROM chat
-        JOIN chat_handle_join ON chat_handle_join.chat_id = chat.ROWID
-        JOIN handle ON handle.ROWID = chat_handle_join.handle_id
+            guid,
+            id as handle,
+            text,
+            date,
+            is_from_me
+        FROM message
+        LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
         ORDER BY handle.rowid DESC
         LIMIT ${limit};
     `
 
     const chats = await db.all(query)
+
+    for (let i = 0; i < chats.length; i++)
+        {
+            if (chats[i].text.includes('tiktok.com'))
+            {
+
+                fs.readFile(linkPath, function (err, data) {
+                    if (err) throw err;
+
+                    if(data.includes(chats[i].text)){
+                     console.log("Link already added")
+                    }
+                    else 
+                    {
+                        fs.readFile(logPath, function (err, data2) {
+                            if (err) throw err;
+        
+                            if(data2.includes(chats[i].text)){
+                             console.log("Link already in database")
+                            }
+                            else {
+                        writeLink(chats[i].text)}
+                            });
+                    }
+                  });
+                
+                
+                
+                
+            }
+        }
+    console.log(chats[0])
     return chats
 }
 
