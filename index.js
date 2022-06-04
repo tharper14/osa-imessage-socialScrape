@@ -61,7 +61,7 @@ function fromAppleTime(ts) {
         ts = unpackTime(ts)
     }
 
-    return new Date((ts + DATE_OFFSET) * 1000)
+    return new Date((ts + DATE_OFFSET-14400) * 1000)
 }
 
 // Since macOS 10.13 High Sierra, some timestamps appear to have extra data
