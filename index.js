@@ -1,5 +1,5 @@
-const linkPath = '/Users/socialscrape/Social Wake Dropbox/Tylers Tests/chatScrape.txt'
-const logPath = '/Users/socialscrape/Social Wake Dropbox/Tylers Tests/chatLog.txt'
+const linkPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/chatScrapeLinks.txt'
+const logPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/chatLog.txt'
 // const linkPath = '/Users/socialscrape/Social Wake Dropbox/Social Scrape/chatScrape.txt'
 // const logPath = '/Users/socialscrape/Social Wake Dropbox/Social Scrape/testLog.txt'
 
@@ -211,47 +211,62 @@ async function getRecentChats(limit = 100) {
             id as handle,
             text,
             date,
-            is_from_me
+            is_from_me,
+            cache_roomnames
         FROM message
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
+        WHERE cache_roomnames = 'chat652293730519823796'
         ORDER BY date DESC
         LIMIT ${limit};
     `
 
     const chats = await db.all(query)
 
-    for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
+     for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
         {
-            if (chats[i].text !== null && chats[i].text.includes("tiktok.com")/* && !chats[i].text.includes('Disliked')&& chats[i].group !== undefined && chats[i].group.includes("chat652293730519823796")*/)//if text contains tiktok.com...
+            if (chats[i].text !== null && chats[i].text.includes("tiktok.com"))
             {
                 fs.readFile(linkPath, function (err, data) { //read chatScrape.txt...
                     if (err) throw err;
-
+                    let fullDate = fromAppleTime(chats[i].date)
+                    let shortDate = fullDate.toLocaleString('en-US', {
+                        timeZone: 'America/New_York',
+                        year: "2-digit",
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        // timeStyle: 'full'
+                      })
                     if(data.includes(chats[i].text)){ //if link i is in cchatScrape.txt...
-                     console.log("Link " +i+ " already logged")
+                     console.log("Link " +i+ " already logged; " + shortDate)
                     }
+                    // if(chats[i].group.includes("chat652293730519823796"))
                     else  //if not in chatLog, add it to chatLog
                     {
-                        let fullDate = fromAppleTime(chats[i].date)
-                        let shortDate = fullDate.toLocaleString('en-US', {
-                            timeZone: 'America/New_York',
-                            year: "2-digit",
-                            month: '2-digit',
-                            day: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            // timeStyle: 'full'
-                          })
+                        // let fullDate = fromAppleTime(chats[i].date)
+                        // let shortDate = fullDate.toLocaleString('en-US', {
+                        //     timeZone: 'America/New_York',
+                        //     year: "2-digit",
+                        //     month: '2-digit',
+                        //     day: '2-digit',
+                        //     hour: '2-digit',
+                        //     minute: '2-digit',
+                        //     second: '2-digit',
+                        //     // timeStyle: 'full'
+                        //   })
                         console.log(shortDate);
                          
-                         writeChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`);
+                         //writeChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`);
                          writeLink(chats[i].text);
                          console.log("Link Added");    
                     }
+                    // else {console.log("nothing happened..")}
                   });
                 
             }
+            else {console.log("-")}
         }// end of loop
     //console.log(chats[0])
     return chats
