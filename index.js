@@ -1,8 +1,19 @@
-const linkPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/chatScrapeLinks.txt'
+const missedLinkPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/missedLinks.txt'
 const logPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/chatLog.txt'
-// const linkPath = '/Users/socialscrape/Social Wake Dropbox/Social Scrape/chatScrape.txt'
+const missedLogPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/missedLinksLog.txt'
+const completedPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/masterCompletedLog.txt'
+const linkPath = '/Users/socialscrape/Social Wake Dropbox/Social Scrape/chatScrape.txt'
 // const logPath = '/Users/socialscrape/Social Wake Dropbox/Social Scrape/testLog.txt'
 
+const anamoly1 = `￼
+https://www.tiktok.com/t/ZTdweoUe8/?k=1
+
+Do we have permission to keep featuring your content? You’re constantly going viral!`
+
+const anamoly2 = `￼
+https://www.tiktok.com/t/ZTdE9NSym/?k=1
+
+Full access on this lockpocking account lol`
 
 
 const fs = require('fs')
@@ -190,21 +201,26 @@ function listen() {
     return emitter
 }
 
-async function getRecentChats(limit = 100) {
+async function getRecentChats(limit=100) {
    
 
     var linkScrape = fs.createWriteStream(linkPath, {
         flags: 'a' // 'a' means appending (old data will be preserved)
       })
-    
-      var chatLogger = fs.createWriteStream(logPath, {
+    var writeLink = (line) => linkScrape.write(`\n${line}`);
+
+    var chatLogger = fs.createWriteStream(logPath, {
         flags: 'a' // 'a' means appending (old data will be preserved)
       })
-      var writeLink = (line) => linkScrape.write(`\n${line}`);
-      var writeChatLog = (line) => chatLogger.write(`\n${line}`);
+    var writeChatLog = (line) => chatLogger.write(`\n${line}`);
+
+    var missedChatLogger = fs.createWriteStream(missedLogPath, {
+        flags: 'a' // 'a' means appending (old data will be preserved)
+      })
+    var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
 
     const db = await messagesDb.open()
-
+      
     const query = `
         SELECT
             guid,
@@ -215,19 +231,23 @@ async function getRecentChats(limit = 100) {
             cache_roomnames
         FROM message
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
-        WHERE cache_roomnames = 'chat652293730519823796'
-        ORDER BY date DESC
-        LIMIT ${limit};
-    `
-
+        WHERE cache_roomnames = 'chat652293730519823796'                
+        AND text LIKE "%tiktok.com%"
+        ORDER BY date ASC;
+        LIMIT ${limit}
+    `   //pull all text messages from clip chat and that say "tiktok.com"
+    // ORDER BY date DESC
+    // LIMIT ${limit}
     const chats = await db.all(query)
 
-     for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
+    for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
         {
-            if (chats[i].text !== null && chats[i].text.includes("tiktok.com"))
-            {
-                fs.readFile(linkPath, function (err, data) { //read chatScrape.txt...
-                    if (err) throw err;
+            // if (chats[i].text !== null && chats[i].text.includes("tiktok.com")) //if tt link in groupchat..
+            // {
+                // fs.readFile(completedPath, function (err, data) { //read chatScrape.txt...
+                //     if (err) throw err;
+                
+
                     let fullDate = fromAppleTime(chats[i].date)
                     let shortDate = fullDate.toLocaleString('en-US', {
                         timeZone: 'America/New_York',
@@ -237,40 +257,60 @@ async function getRecentChats(limit = 100) {
                         hour: '2-digit',
                         minute: '2-digit',
                         second: '2-digit',
-                        // timeStyle: 'full'
-                      })
-                    if(data.includes(chats[i].text)){ //if link i is in cchatScrape.txt...
-                     console.log("Link " +i+ " already logged; " + shortDate)
-                    }
-                    // if(chats[i].group.includes("chat652293730519823796"))
-                    else  //if not in chatLog, add it to chatLog
+                        /* timeStyle: 'full'*/ })
+                    if (checkIfContainsSync(completedPath, chats[i].text) == false 
+                    && checkIfContainsSync(linkPath, chats[i].text) == false) 
                     {
-                        // let fullDate = fromAppleTime(chats[i].date)
-                        // let shortDate = fullDate.toLocaleString('en-US', {
-                        //     timeZone: 'America/New_York',
-                        //     year: "2-digit",
-                        //     month: '2-digit',
-                        //     day: '2-digit',
-                        //     hour: '2-digit',
-                        //     minute: '2-digit',
-                        //     second: '2-digit',
-                        //     // timeStyle: 'full'
-                        //   })
-                        console.log(shortDate);
-                         
-                         //writeChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`);
-                         writeLink(chats[i].text);
-                         console.log("Link Added");    
+                       // if(!data.includes(chats[i].text)){ 
+
+                        writeLink(chats[i].text);
+                            //console.log(chats[i].text)
+                        console.log(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`)
+                        //console.log(chats[i].text)
+
+                        if (checkIfContainsSync(logPath, chats[i].text) ==false && chats[i].text != anamoly1 && chats[i].text != anamoly2 ) //if chatlog doesnt contain
+                            {
+                                writeMissedChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`);
+                            }
+                     //console.log("Link " +i+ " already downloaded; " + shortDate)
                     }
-                    // else {console.log("nothing happened..")}
-                  });
+                    
+
+
+                    // else  
+                    // {
+                      
+                    //     // console.log(shortDate +"," + chats[i].text);
+                         
+                    //     if (checkIfContainsSyncl(logPath, chats[i].text) ==false) //if chatlog doesnt contain
+                    //     {
+                    //         writeChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`);
+                    //     }
+                         
+                    //     //  console.log("Link Added");    
+                    // }
+                   
+                    
+                 // });
                 
-            }
-            else {console.log("-")}
+            // }
+            //else {console.log("-")}
         }// end of loop
     //console.log(chats[0])
-    return chats
+    
+    //return chats
+    function checkIfContainsSync(filename, str) {
+
+        let contents = fs.readFileSync(filename, 'utf-8');
+        const result = contents.includes(str);
+        return result;
+    }
 }
+
+
+
+//if this location contains this string, return true, if not return false
+
 
 module.exports = {
     send,
