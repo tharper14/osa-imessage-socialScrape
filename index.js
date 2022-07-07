@@ -219,6 +219,11 @@ async function getRecentChats(limit=100) {
       })
     var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
 
+    var missedChatLinks = fs.createWriteStream(missedLinkPath, {
+        flags: 'a' // 'a' means appending (old data will be preserved)
+      })
+    var writeMissedChatLinks = (line) => missedChatLinks.write(`\n${line}`);
+
     const db = await messagesDb.open()
       
     const query = `
@@ -271,6 +276,7 @@ async function getRecentChats(limit=100) {
                         if (checkIfContainsSync(logPath, chats[i].text) ==false && chats[i].text != anamoly1 && chats[i].text != anamoly2 ) //if chatlog doesnt contain
                             {
                                 writeMissedChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`);
+                                writeMissedChatLinks(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`);
                             }
                      //console.log("Link " +i+ " already downloaded; " + shortDate)
                     }
