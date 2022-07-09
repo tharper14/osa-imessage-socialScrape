@@ -3,7 +3,6 @@ const logPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/chat
 const missedLogPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/missedLinksLog.txt'
 const completedPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/masterCompletedLog.txt'
 const linkPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/chatScrapeLinks.txt'
-// const logPath = '/Users/socialscrape/Social Wake Dropbox/Social Scrape/testLog.txt'
 
 const anamoly1 = `￼
 https://www.tiktok.com/t/ZTdweoUe8/?k=1
@@ -203,25 +202,20 @@ function listen() {
 
 async function getRecentChats(limit=100) {
    
+    var chatLogger = fs.createWriteStream(logPath, {
+        flags: 'a'})// 'a' means appending (old data will be preserved)
+    var writeChatLog = (line) => chatLogger.write(`\n${line}`);
 
     var linkScrape = fs.createWriteStream(linkPath, {
-        flags: 'a' // 'a' means appending (old data will be preserved)
-      })
+        flags: 'a'}) 
     var writeLink = (line) => linkScrape.write(`\n${line}`);
 
-    var chatLogger = fs.createWriteStream(logPath, {
-        flags: 'a' // 'a' means appending (old data will be preserved)
-      })
-     var writeChatLog = (line) => chatLogger.write(`\n${line}`);
-
     var missedChatLogger = fs.createWriteStream(missedLogPath, {
-        flags: 'a' // 'a' means appending (old data will be preserved)
-      })
+        flags: 'a' })
     var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
 
     var missedChatLinks = fs.createWriteStream(missedLinkPath, {
-        flags: 'a' // 'a' means appending (old data will be preserved)
-      })
+        flags: 'a'})
     var writeMissedChatLinks = (line) => missedChatLinks.write(`\n${line}`);
 
 
@@ -241,17 +235,12 @@ async function getRecentChats(limit=100) {
         AND text LIKE "%tiktok.com%"
         ORDER BY date ASC;
         LIMIT ${limit}
-    `   //pull all text messages from clip chat and that say "tiktok.com"
-    // ORDER BY date DESC
-    // LIMIT ${limit}
+    `   //pull all text messages from clip chat that say "tiktok.com"
+ 
     const chats = await db.all(query)
 
     for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
         {
-            // if (chats[i].text !== null && chats[i].text.includes("tiktok.com")){
-                // fs.readFile(completedPath, function (err, data) {if (err) throw err; 
-                     // if(!data.includes(chats[i].text)){ }
-
                     let fullDate = fromAppleTime(chats[i].date)
                     let shortDate = fullDate.toLocaleString('en-US', {
                         timeZone: 'America/New_York',
@@ -266,14 +255,13 @@ async function getRecentChats(limit=100) {
                     && checkIfContainsSync(linkPath, chats[i].text) == false
                     && chats[i].text != anamoly1 && chats[i].text != anamoly2) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
                 {
+                    
                     writeLink(chats[i].text);  //write link to chatScrapeLinks.txt
                     //console.log(chats[i].text)
                     writeMissedChatLinks(`${chats[i].text}`);  //just a second source for troubleshooting, meant to be deleted everytime?
                     console.log(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`)
                     //console.log(chats[i].text)
 
-                    
-                    
                 }
                 if (checkIfContainsSync(logPath, chats[i].text) ==false && chats[i].text != anamoly1 && chats[i].text != anamoly2 && chats[i].text != null ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
                 {
@@ -281,28 +269,19 @@ async function getRecentChats(limit=100) {
                     writeMissedChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`); //if not not logged, log it (missedChatLog.txt)
                     
                 } 
-                         
-                    //     if (checkIfContainsSyncl(logPath, chats[i].text) ==false) //if chatlog doesnt contain
-                    //     {
-                    //         writeChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`);
-                    //     }
-               
         }// end of loop
-    
-    
-    //return chats
-    function checkIfContainsSync(filename, str) {
 
-        let contents = fs.readFileSync(filename, 'utf-8');
-        const result = contents.includes(str);
-        return result;
-    }
+    //return chats
 }
 
 
-
 //if this location contains this string, return true, if not return false
+function checkIfContainsSync(filename, str) {
 
+    let contents = fs.readFileSync(filename, 'utf-8');
+    const result = contents.includes(str);
+    return result;
+}
 
 module.exports = {
     send,
