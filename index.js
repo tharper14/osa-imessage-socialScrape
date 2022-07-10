@@ -277,7 +277,7 @@ async function getRecentChats(limit=100) {
 }
 
 
-if this location contains this string, return true, if not return false
+//if this location contains this string, return true, if not return false
 function checkIfContainsSync(filename, str) {
 
     let contents = fs.readFileSync(filename, 'utf-8');
