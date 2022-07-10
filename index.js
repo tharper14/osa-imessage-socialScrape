@@ -201,8 +201,8 @@ function listen() {
     return emitter
 }
 
-async function getRecentChats(limit=100, groupChat, fromWhichDate) {
-   
+async function getRecentChats(limit=100) {
+   const groupChat = '679112890556703100'
     var chatLogger = fs.createWriteStream(logPath, {
         flags: 'a'})// 'a' means appending (old data will be preserved)
     var writeChatLog = (line) => chatLogger.write(`\n${line}`);
@@ -234,11 +234,11 @@ async function getRecentChats(limit=100, groupChat, fromWhichDate) {
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
         WHERE cache_roomnames = ${groupChat}                
         AND text LIKE "%tiktok.com%"
-        AND date > ${fromWhichDate}
+     
         ORDER BY date ASC;
         LIMIT ${limit}
     `   //pull all text messages from clip chat that say "tiktok.com"
- 
+ //AND date > ${fromWhichDate}
     const chats = await db.all(query)
 
     for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
