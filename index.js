@@ -1,4 +1,4 @@
-const yourUsername = 'tylerharper';
+const yourUsername = 'socialscrape';
 const dropBoxFolder = '_socialScrape'
 const completedPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/masterCompletedLog.txt`
 const linkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/chatScrapeLinks.txt`
