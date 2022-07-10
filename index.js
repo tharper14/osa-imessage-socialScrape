@@ -1,5 +1,5 @@
 
-const yourUsername = 'tylerharper';
+const yourUsername = 'USERNAME';
 const dropBoxFolder = '_socialScrape'
 const completedPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/masterCompletedLog.txt`
 const linkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/chatScrapeLinks.txt`
@@ -17,6 +17,7 @@ https://www.tiktok.com/t/ZTdE9NSym/?k=1
 
 Full access on this lockpocking account lol`
 
+const chatID = '679112890556703100'
 
 const fs = require('fs')
 const osa = require('osa2')
@@ -234,8 +235,9 @@ async function getRecentChats(limit=100) {
             cache_roomnames
         FROM message
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
-        WHERE cache_roomnames = 'chat652293730519823796'                
+        WHERE cache_roomnames = ${chatID}                
         AND text LIKE "%tiktok.com%"
+        AND date > 679112890556703100
         ORDER BY date ASC;
         LIMIT ${limit}
     `   //pull all text messages from clip chat that say "tiktok.com"
