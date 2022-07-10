@@ -1,8 +1,11 @@
-const missedLinkPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/missedLinks.txt'
-const logPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/chatLog.txt'
-const missedLogPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/missedLinksLog.txt'
-const completedPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/masterCompletedLog.txt'
-const linkPath = '/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/chatScrapeLinks.txt'
+
+const yourUsername = 'tylerharper';
+const dropBoxFolder = '_socialScrape'
+const completedPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/masterCompletedLog.txt`
+const linkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/chatScrapeLinks.txt`
+const missedLinkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/missedLinks.txt`
+const missedLogPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/missedLinksLog.txt`
+const logPath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/chatLog.txt`
 
 const anamoly1 = `￼
 https://www.tiktok.com/t/ZTdweoUe8/?k=1
