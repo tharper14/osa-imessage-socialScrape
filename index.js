@@ -287,6 +287,7 @@ function checkIfContainsSync(filename, str) {
     const result = contents.includes(str);
     return result;
 }
+getRecent();
 
 module.exports = {
     send,
