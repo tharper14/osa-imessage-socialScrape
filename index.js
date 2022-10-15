@@ -1,3 +1,4 @@
+
 const yourUsername = 'socialscrape';
 const dropBoxFolder = '_socialScrape'
 const completedPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/masterCompletedLog.txt`
@@ -5,16 +6,24 @@ const linkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/l
 const missedLinkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/missedLinks.txt`
 const missedLogPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/missedLinksLog.txt`
 const logPath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/chatLog.txt`
+const IGLogPath ='/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/IGLog.txt'
 
 const anamoly1 = `￼
 https://www.tiktok.com/t/ZTdweoUe8/?k=1
+
 Do we have permission to keep featuring your content? You’re constantly going viral!`
 
 const anamoly2 = `￼
 https://www.tiktok.com/t/ZTdE9NSym/?k=1
+
 Full access on this lockpocking account lol`
 
-const chatID = '679112890556703100'
+
+const anamoly3 =` https://www.tiktok.com/t/
+ZTR2gKywy/?k=1`;
+
+// const chatID = '679112890556703100'
+
 
 const fs = require('fs')
 const osa = require('osa2')
@@ -167,6 +176,7 @@ function listen() {
             FROM message
             LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
             WHERE date >= ${last}
+            AND text NOT LIKE "%Disliked%"
         `
         last = packTimeConditionally(appleTimeNow())
 
@@ -181,7 +191,7 @@ function listen() {
                     handle: msg.handle,
                     group: msg.cache_roomnames,
                     fromMe: !!msg.is_from_me,
-                    date: fromAppleTime(msg.date),
+                    date: msg.date,//fromAppleTime(msg.date),
                     dateRead: fromAppleTime(msg.date_read),
                 })
             })
@@ -201,8 +211,8 @@ function listen() {
     return emitter
 }
 
-async function getRecentChats(limit=100) {
-   const groupChat = '679112890556703100'
+async function getRecentChats(limit) { 
+   
     var chatLogger = fs.createWriteStream(logPath, {
         flags: 'a'})// 'a' means appending (old data will be preserved)
     var writeChatLog = (line) => chatLogger.write(`\n${line}`);
@@ -219,7 +229,8 @@ async function getRecentChats(limit=100) {
         flags: 'a'})
     var writeMissedChatLinks = (line) => missedChatLinks.write(`\n${line}`);
 
-
+    const chatID = "'chat652293730519823796'"
+  
     const db = await messagesDb.open()
       
     const query = `
@@ -232,13 +243,13 @@ async function getRecentChats(limit=100) {
             cache_roomnames
         FROM message
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
-        WHERE cache_roomnames = ${groupChat}                
-        AND text LIKE "%tiktok.com%"
-     
+        WHERE cache_roomnames = ${chatID}               
+        AND (text LIKE "%tiktok.com%" AND text NOT LIKE "%Disliked%")
+        AND date > 679287919176446101;
         ORDER BY date ASC;
         LIMIT ${limit}
     `   //pull all text messages from clip chat that say "tiktok.com"
- //AND date > ${fromWhichDate}
+ //AND date > 679287919176346100 - date of bad link
     const chats = await db.all(query)
 
     for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
@@ -255,11 +266,11 @@ async function getRecentChats(limit=100) {
                         /* timeStyle: 'full'*/ })
             if (checkIfContainsSync(completedPath, chats[i].text) == false 
                     && checkIfContainsSync(linkPath, chats[i].text) == false
-                    && chats[i].text != anamoly1 && chats[i].text != anamoly2) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
+                    && chats[i].text != anamoly1 && chats[i].text != anamoly2 && chats[i].text != anamoly3) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
                 {
                     
                     writeLink(chats[i].text);  //write link to chatScrapeLinks.txt
-                    //console.log(chats[i].text)
+                    console.log(chats[i].date)
                     writeMissedChatLinks(`${chats[i].text}`);  //just a second source for troubleshooting, meant to be deleted everytime?
                     console.log(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`)
                     //console.log(chats[i].text)
@@ -273,10 +284,45 @@ async function getRecentChats(limit=100) {
                 } 
         }// end of loop
 
+    //return chats
+}
+//______________________________________________________________________________________________
+
+async function globalLog() {
+   
+   
+    const ttID = "'chat652293730519823796'"
+    const igID = "'chat222048912579693603'"
+    const otherID = "'chat951176133862785356'"
+    const dateApple = "'683596800000000000'"
+    const db = await messagesDb.open()
+      
+    const query = `
+        SELECT
+            guid,
+            id as handle,
+            text,
+            date,
+            is_from_me,
+            cache_roomnames
+        FROM message
+        LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
+        WHERE (cache_roomnames = ${ttID} OR cache_roomnames = ${igID} OR cache_roomnames = ${otherID} )
+        AND (text LIKE "%tiktok.com%" OR text LIKE "%instagram.com%")
+        AND date > ${dateApple}
+        ORDER BY date ASC;
+    `
+    //AND date > 683596800000000000 august 31st
+    const chats = await db.all(query)
+    for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
+    {
+        console.log(chats[i].date)
+    }
+   
+      
+
     return chats
 }
-
-
 //if this location contains this string, return true, if not return false
 function checkIfContainsSync(filename, str) {
 
@@ -285,12 +331,12 @@ function checkIfContainsSync(filename, str) {
     return result;
 }
 
-
 module.exports = {
     send,
     listen,
     handleForName,
     nameForHandle,
     getRecentChats,
+    globalLog,
     SUPPRESS_WARNINGS: false,
 }
