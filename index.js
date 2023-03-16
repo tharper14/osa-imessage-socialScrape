@@ -7,23 +7,14 @@ const missedLinkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFol
 const missedLogPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/missedLinksLog.txt`
 const logPath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/chatLog.txt`
 const IGLogPath ='/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/IGLog.txt'
-
-const anamoly1 = `￼
-https://www.tiktok.com/t/ZTdweoUe8/?k=1
-
-Do we have permission to keep featuring your content? You’re constantly going viral!`
-
-const anamoly2 = `￼
-https://www.tiktok.com/t/ZTdE9NSym/?k=1
-
-Full access on this lockpocking account lol`
-
-
-const anamoly3 =` https://www.tiktok.com/t/
-ZTR2gKywy/?k=1`;
+const badLinksPath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/badLinks.txt`
+const igScrapePath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/igScrape.txt`
+let bufferData = [];
 
 // const chatID = '679112890556703100'
-
+// const ttOnlyChatID = "'chat652293730519823796'";
+// const igChatID = "'chat222048912579693603'"
+// const dateFromChatLinks = '679112890556703100';
 
 const fs = require('fs')
 const osa = require('osa2')
@@ -53,11 +44,11 @@ if (versions.broken.includes(currentVersion)) {
     process.exit(1)
 }
 
-if (!versions.working.includes(currentVersion)) {
-    warn(`This version of macOS \(${currentVersion}) is currently
-          untested with this version of osa-imessage. Proceed with
-          caution.`)
-}
+//if (!versions.working.includes(currentVersion)) {
+ //   warn(`This version of macOS \(${currentVersion}) is currently
+ //         untested with this version of osa-imessage. Proceed with
+ //        caution.`)
+//}
 
 // Instead of doing something reasonable, Apple stores dates as the number of
 // seconds since 01-01-2001 00:00:00 GMT. DATE_OFFSET is the offset in seconds
@@ -211,25 +202,26 @@ function listen() {
     return emitter
 }
 
-async function getRecentChats(limit) { 
+async function getRecentChats(chatStartDate) { 
    
     var chatLogger = fs.createWriteStream(logPath, {
         flags: 'a'})// 'a' means appending (old data will be preserved)
     var writeChatLog = (line) => chatLogger.write(`\n${line}`);
 
-    var linkScrape = fs.createWriteStream(linkPath, {
-        flags: 'a'}) 
-    var writeLink = (line) => linkScrape.write(`\n${line}`);
+    
 
-    var missedChatLogger = fs.createWriteStream(missedLogPath, {
-        flags: 'a' })
-    var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
+    // var missedChatLogger = fs.createWriteStream(missedLogPath, {
+    //     flags: 'a' })
+    // var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
 
-    var missedChatLinks = fs.createWriteStream(missedLinkPath, {
-        flags: 'a'})
-    var writeMissedChatLinks = (line) => missedChatLinks.write(`\n${line}`);
+    // var missedChatLinks = fs.createWriteStream(missedLinkPath, {
+    //     flags: 'a'})
+    // var writeMissedChatLinks = (line) => missedChatLinks.write(`\n${line}`);
 
     const chatID = "'chat652293730519823796'"
+    const ttOnlyChatID = "'chat652293730519823796'";
+    const igChatID = "'chat222048912579693603'"
+    const dateFromChatLinks = '679112890556703100';
   
     const db = await messagesDb.open()
       
@@ -244,12 +236,104 @@ async function getRecentChats(limit) {
         FROM message
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
         WHERE cache_roomnames = ${chatID}               
-        AND (text LIKE "%tiktok.com%" AND text NOT LIKE "%Disliked%")
-        AND date > 679287919176446101;
+        AND (text LIKE "%tiktok.com%" AND text NOT LIKE "%Disliked%" OR text LIKE "%instagram.com%")
+        AND date > ${chatStartDate};
         ORDER BY date ASC;
-        LIMIT ${limit}
+        
     `   //pull all text messages from clip chat that say "tiktok.com"
- //AND date > 679287919176346100 - date of bad link
+        //AND date > 679287919176346100 - date of bad link
+        //LIMIT ${limit}
+    const chats = await db.all(query)
+
+    
+
+    for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
+        {
+                    let fullDate = fromAppleTime(chats[i].date)
+                    let shortDate = fullDate.toLocaleString('en-US', {
+                        timeZone: 'America/New_York',
+                        year: "2-digit",
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        /* timeStyle: 'full'*/ })
+                    
+                        let text = chats[i].text
+                        const urlPattern = /(https?:\/\/[^\s]+)/; 
+                        const match = text.match(urlPattern); 
+                        let link = match ? match[0] : null; //console.log(link);
+            if (checkIfContainsSync(completedPath, link) == false 
+                    && checkIfContainsSync(linkPath, link) == false
+                    && checkIfContainsSync(badLinksPath, link) == false) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
+                {
+                    
+                   // writeLink(chats[i].text);  //write link to chatScrapeLinks.txt
+                   bufferData.push(link) 
+                   //console.log(chats[i].date)
+                   // writeMissedChatLinks(`${chats[i].text}`);  //just a second source for troubleshooting, meant to be deleted everytime?
+                    console.log(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`)
+                    //console.log(chats[i].text)
+
+                }
+                if (checkIfContainsSync(logPath, link) ==false && chats[i].text != null ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
+                {
+                    writeChatLog(`${shortDate}, ${link}, ${chats[i].handle}`); //if not not logged, log it (chatLog.txt)
+                    // writeMissedChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`); //if not not logged, log it (missedChatLog.txt)
+                    
+                } 
+        }// end of loop
+        var linkScrape = fs.createWriteStream(linkPath, {
+            flags: 'a'}) 
+        var writeLink = (line) => linkScrape.write(`\n${line}`);
+        for(let j=0; j< bufferData.length; j++){
+              writeLink(bufferData[j]);  //write link to chatScrapeLinks.txt
+        }
+    //return chats
+}
+//______________________________________________________________________________________________
+async function getRecentSpecial(chatStartDate) { 
+   
+    var chatLogger = fs.createWriteStream(logPath, {
+        flags: 'a'})// 'a' means appending (old data will be preserved)
+    var writeChatLog = (line) => chatLogger.write(`\n${line}`);
+
+    var linkScrape = fs.createWriteStream(linkPath, {
+        flags: 'a'}) 
+    var writeLink = (line) => linkScrape.write(`\n${line}`);
+
+    var missedChatLogger = fs.createWriteStream(missedLogPath, {
+        flags: 'a' })
+    var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
+
+    // var missedChatLinks = fs.createWriteStream(missedLinkPath, {
+    //     flags: 'a'})
+    // var writeMissedChatLinks = (line) => missedChatLinks.write(`\n${line}`);
+
+    const chatID = "'chat652293730519823796'"
+    const ttOnlyChatID = "'chat652293730519823796'";
+    const igChatID = "'chat222048912579693603'"
+    const dateFromChatLinks = '679112890556703100';
+  
+    const db = await messagesDb.open()
+      
+    const query = `
+        SELECT
+            guid,
+            id as handle,
+            text,
+            date,
+            is_from_me,
+            cache_roomnames
+        FROM message
+        LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
+        WHERE cache_roomnames = ${igChatID}               
+        AND (text LIKE "%tiktok.com%" AND text NOT LIKE "%Disliked%" OR text LIKE "%instagram.comhgbn%")
+        AND date > ${chatStartDate};
+        ORDER BY date ASC;
+        
+    ` 
     const chats = await db.all(query)
 
     for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
@@ -266,12 +350,12 @@ async function getRecentChats(limit) {
                         /* timeStyle: 'full'*/ })
             if (checkIfContainsSync(completedPath, chats[i].text) == false 
                     && checkIfContainsSync(linkPath, chats[i].text) == false
-                    && chats[i].text != anamoly1 && chats[i].text != anamoly2 && chats[i].text != anamoly3) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
+                    && checkIfContainsSync(badLinksPath, chats[i].text) == false) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
                 {
                     
                     writeLink(chats[i].text);  //write link to chatScrapeLinks.txt
                     console.log(chats[i].date)
-                    writeMissedChatLinks(`${chats[i].text}`);  //just a second source for troubleshooting, meant to be deleted everytime?
+                   // writeMissedChatLinks(`${chats[i].text}`);  //just a second source for troubleshooting, meant to be deleted everytime?
                     console.log(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`)
                     //console.log(chats[i].text)
 
@@ -288,15 +372,20 @@ async function getRecentChats(limit) {
 }
 //______________________________________________________________________________________________
 
-async function globalLog() {
+async function globalLog(chatStartDate, chatEndDate) {
    
-   
+   //console.log("We'ere here")
     const ttID = "'chat652293730519823796'"
     const igID = "'chat222048912579693603'"
     const otherID = "'chat951176133862785356'"
     const dateApple = "'683596800000000000'"
     const db = await messagesDb.open()
       
+    const chatID = "'chat652293730519823796'"
+
+
+  
+  
     const query = `
         SELECT
             guid,
@@ -309,15 +398,21 @@ async function globalLog() {
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
         WHERE (cache_roomnames = ${ttID} OR cache_roomnames = ${igID} OR cache_roomnames = ${otherID} )
         AND (text LIKE "%tiktok.com%" OR text LIKE "%instagram.com%")
-        AND date > ${dateApple}
+        AND (date > ${chatStartDate} AND date < ${chatEndDate})
+        
         ORDER BY date ASC;
+        
     `
-    //AND date > 683596800000000000 august 31st
+
+
+    //august 31st AND date > ${dateApple}
+
     const chats = await db.all(query)
-    for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
-    {
-        console.log(chats[i].date)
-    }
+    // let chats = await db.all(query)
+    // for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
+    // {
+    //     console.log(chats[i].date)
+    // }
    
       
 
