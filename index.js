@@ -9,7 +9,9 @@ const logPath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/log
 const IGLogPath ='/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/IGLog.txt'
 const badLinksPath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/badLinks.txt`
 const igScrapePath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/igScrape.txt`
+const linkPathSpecial = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/specialChatScrape.txt`
 let bufferData = [];
+let bufferDataSpecial = [];
 
 // const chatID = '679112890556703100'
 // const ttOnlyChatID = "'chat652293730519823796'";
@@ -299,13 +301,9 @@ async function getRecentSpecial(chatStartDate) {
         flags: 'a'})// 'a' means appending (old data will be preserved)
     var writeChatLog = (line) => chatLogger.write(`\n${line}`);
 
-    var linkScrape = fs.createWriteStream(linkPath, {
-        flags: 'a'}) 
-    var writeLink = (line) => linkScrape.write(`\n${line}`);
-
-    var missedChatLogger = fs.createWriteStream(missedLogPath, {
-        flags: 'a' })
-    var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
+    // var missedChatLogger = fs.createWriteStream(missedLogPath, {
+    //     flags: 'a' })
+    // var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
 
     // var missedChatLinks = fs.createWriteStream(missedLinkPath, {
     //     flags: 'a'})
@@ -328,7 +326,7 @@ async function getRecentSpecial(chatStartDate) {
             cache_roomnames
         FROM message
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
-        WHERE cache_roomnames = ${igChatID}               
+        WHERE cache_roomnames = ${igChatID}              
         AND (text LIKE "%tiktok.com%" AND text NOT LIKE "%Disliked%" OR text LIKE "%instagram.comhgbn%")
         AND date > ${chatStartDate};
         ORDER BY date ASC;
@@ -348,26 +346,37 @@ async function getRecentSpecial(chatStartDate) {
                         minute: '2-digit',
                         second: '2-digit',
                         /* timeStyle: 'full'*/ })
-            if (checkIfContainsSync(completedPath, chats[i].text) == false 
-                    && checkIfContainsSync(linkPath, chats[i].text) == false
-                    && checkIfContainsSync(badLinksPath, chats[i].text) == false) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
-                {
-                    
-                    writeLink(chats[i].text);  //write link to chatScrapeLinks.txt
-                    console.log(chats[i].date)
-                   // writeMissedChatLinks(`${chats[i].text}`);  //just a second source for troubleshooting, meant to be deleted everytime?
-                    console.log(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`)
-                    //console.log(chats[i].text)
+                        let text = chats[i].text
+                        const urlPattern = /(https?:\/\/[^\s]+)/; 
+                        const match = text.match(urlPattern); 
+                        let link = match ? match[0] : null; //console.log(link);
 
-                }
-                if (checkIfContainsSync(logPath, chats[i].text) ==false && chats[i].text != anamoly1 && chats[i].text != anamoly2 && chats[i].text != null ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
-                {
-                    writeChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`); //if not not logged, log it (chatLog.txt)
-                    writeMissedChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`); //if not not logged, log it (missedChatLog.txt)
-                    
-                } 
-        }// end of loop
-
+                        if (checkIfContainsSync(completedPath, link) == false 
+                        && checkIfContainsSync(linkPathSpecial, link) == false
+                        && checkIfContainsSync(badLinksPath, link) == false) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
+                    {
+                        
+                       // writeLink(chats[i].text);  //write link to chatScrapeLinks.txt
+                       bufferDataSpecial.push(link) 
+                       //console.log(chats[i].date)
+                       // writeMissedChatLinks(`${chats[i].text}`);  //just a second source for troubleshooting, meant to be deleted everytime?
+                        console.log(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`)
+                        //console.log(chats[i].text)
+    
+                    }
+                    if (checkIfContainsSync(logPath, link) ==false && chats[i].text != null ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
+                    {
+                        writeChatLog(`${shortDate}, ${link}, ${chats[i].handle}`); //if not not logged, log it (chatLog.txt)
+                        // writeMissedChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`); //if not not logged, log it (missedChatLog.txt)
+                        
+                    } 
+            }// end of loop
+            var linkScrapeSpecial = fs.createWriteStream(linkPathSpecial, {
+                flags: 'a'}) 
+            var writeLinkSpecial = (line) => linkScrapeSpecial.write(`\n${line}`);
+            for(let j=0; j< bufferDataSpecial.length; j++){
+                  writeLinkSpecial(bufferDataSpecial[j]);  //write link to chatScrapeLinks.txt
+            }
     //return chats
 }
 //______________________________________________________________________________________________
@@ -433,5 +442,6 @@ module.exports = {
     nameForHandle,
     getRecentChats,
     globalLog,
+    getRecentSpecial,
     SUPPRESS_WARNINGS: false,
 }
