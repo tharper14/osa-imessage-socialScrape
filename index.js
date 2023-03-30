@@ -207,14 +207,11 @@ function listen() {
     return emitter
 }
 
+
+
+
 async function getRecentChats(chatStartDate) { 
-   
-    var chatLogger = fs.createWriteStream(logPath, {
-        flags: 'a'})// 'a' means appending (old data will be preserved)
-    var writeChatLog = (line) => chatLogger.write(`\n${line}`);
-
-    
-
+ 
     // var missedChatLogger = fs.createWriteStream(missedLogPath, {
     //     flags: 'a' })
     // var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
@@ -269,6 +266,8 @@ async function getRecentChats(chatStartDate) {
                         const urlPattern = /(https?:\/\/[^\s]+)/; 
                         const match = text.match(urlPattern); 
                         let link = match ? match[0] : null; //console.log(link);
+
+                        let linkInstance = `${shortDate}, ${chats[i].text}, ${chats[i].handle}`
             if (checkIfContainsSync(completedPath, link) == false 
                     && checkIfContainsSync(linkPath, link) == false
                     && checkIfContainsSync(badLinksPath, link) == false) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
@@ -284,9 +283,24 @@ async function getRecentChats(chatStartDate) {
                 }
                 if (checkIfContainsSync(logPath, link) ==false && chats[i].text != null ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
                 {
-                    writeChatLog(`${shortDate}, ${link}, ${chats[i].handle}`); //if not not logged, log it (chatLog.txt)
+                   
+                    bufferChatLog.push(`${shortDate}, ${link}, ${chats[i].handle}`);
+                    // writeChatLog(`${shortDate}, ${link}, ${chats[i].handle}`); //if not not logged, log it (chatLog.txt)
                     // writeMissedChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`); //if not not logged, log it (missedChatLog.txt)
                     
+                } 
+
+                let dupCheck = checkIfContainsSyncReturnLine(logPath, link)
+                if (checkIfContainsSync(logPath, linkInstance) ==false && chats[i].text != null && dupCheck != false ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
+                {
+                   //link has already been submitted by somebody else
+                    const phoneNumber = '+19372435942'; // Replace with the phone number you want to send the message to
+                    const messageText = `VOID ${linkInstance}, link was previously found via ${dupCheck}`; // Replace with the text you want to send
+
+                    imessage.send(phoneNumber, messageText)
+                    .then(() => console.log('Message sent successfully!'))
+                    .catch((err) => console.error('Error sending message:', err));
+
                 } 
         }// end of loop
         var linkScrape = fs.createWriteStream(linkPath, {
@@ -294,13 +308,27 @@ async function getRecentChats(chatStartDate) {
         var writeLink = (line) => linkScrape.write(`\n${line}`);
         for(let j=0; j< bufferData.length; j++){
               writeLink(bufferData[j]);  //write link to chatScrapeLinks.txt
+
+
+
         }
+        var chatLogger = fs.createWriteStream(logPath, {
+            flags: 'a'})// 'a' means appending (old data will be preserved)
+        var writeChatLog = (line) => chatLogger.write(`\n${line}`);
+
+        for(let k=0; k< bufferChatLog.length; k++){
+            writeChatLog(bufferChatLog[k]);  //write link to chatLog
+
+
+
+      }
+
     //return chats
 }
 //______________________________________________________________________________________________
 async function getRecentSpecial(chatStartDate) { 
    
-    var chatLogger = fs.createWriteStream(logPath, {
+    var chatLogger = fs.createWriteStream(specialLogPath, {
         flags: 'a'})// 'a' means appending (old data will be preserved)
     var writeChatLog = (line) => chatLogger.write(`\n${line}`);
 
@@ -438,6 +466,19 @@ function checkIfContainsSync(filename, str) {
     return result;
 }
 
+function checkIfContainsSyncReturnLine(filename, str) {
+    const contents = fs.readFileSync(filename, 'utf-8');
+    const lines = contents.split(/\r?\n/);
+
+    for (const line of lines) {
+        if (line.includes(str)) {
+            return line;
+        }
+    }
+
+    return false;
+}
+
 module.exports = {
     send,
     listen,
@@ -448,3 +489,4 @@ module.exports = {
     getRecentSpecial,
     SUPPRESS_WARNINGS: false,
 }
+
