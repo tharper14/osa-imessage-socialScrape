@@ -6,12 +6,15 @@ const linkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/l
 const missedLinkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/missedLinks.txt`
 const missedLogPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/missedLinksLog.txt`
 const logPath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/chatLog.txt`
-const IGLogPath ='/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/IGLog.txt'
+const specialLogPath ='/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/specialChatLog.txt'
 const badLinksPath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/badLinks.txt`
 const igScrapePath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/igScrape.txt`
 const linkPathSpecial = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/specialChatScrape.txt`
+const duplicatePath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/duplicateLinks.txt`
 let bufferData = [];
+let bufferChatLog = [];
 let bufferDataSpecial = [];
+let bufferDuplicate = [];
 
 // const chatID = '679112890556703100'
 // const ttOnlyChatID = "'chat652293730519823796'";
@@ -26,6 +29,7 @@ const macosVersion = require('macos-version')
 
 const versions = require('./macos_versions')
 const currentVersion = macosVersion()
+const isParticipant = (macosVersion.is('>=14.0')) ? true : false
 
 const messagesDb = require('./lib/messages-db.js')
 
@@ -144,6 +148,7 @@ function send(handle, message) {
 
 let emitter = null
 let emittedMsgs = []
+
 function listen() {
     // If listen has already been run, return the existing emitter
     if (emitter != null) {
@@ -151,7 +156,7 @@ function listen() {
     }
 
     // Create an EventEmitter
-    emitter = new (require('events')).EventEmitter()
+    emitter = new(require('events')).EventEmitter()
 
     let last = packTimeConditionally(appleTimeNow() - 5)
     let bail = false
@@ -207,11 +212,8 @@ function listen() {
     return emitter
 }
 
-
-
-
 async function getRecentChats(chatStartDate) { 
- 
+
     // var missedChatLogger = fs.createWriteStream(missedLogPath, {
     //     flags: 'a' })
     // var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
@@ -251,23 +253,38 @@ async function getRecentChats(chatStartDate) {
 
     for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
         {
-                    let fullDate = fromAppleTime(chats[i].date)
-                    let shortDate = fullDate.toLocaleString('en-US', {
-                        timeZone: 'America/New_York',
-                        year: "2-digit",
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        /* timeStyle: 'full'*/ })
-                    
-                        let text = chats[i].text
-                        const urlPattern = /(https?:\/\/[^\s]+)/; 
-                        const match = text.match(urlPattern); 
-                        let link = match ? match[0] : null; //console.log(link);
+            let fullDate = fromAppleTime(chats[i].date)
+            let shortDate = fullDate.toLocaleString('en-US', {
+                timeZone: 'America/New_York',
+                year: "2-digit",
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                /* timeStyle: 'full'*/ })
+            
+            let text = chats[i].text
+            const urlPattern = /(https?:\/\/[^\s]+)/g;
+            const matches = text.match(urlPattern);
+            
+            let link;
+            
+            if (matches && matches.length > 1) {
+              link = matches;
+              //console.log(`All links: ${link.join(",")}`);
+            } else {
+              link = matches ? matches[0] : null;
+              //console.log(`Link: ${link}`);
+            }
+            
+            if (Array.isArray(link)) {
+              //console.log("Link is an array");
+            } else {
+             // console.log("Link is a string");
+            }
 
-                        let linkInstance = `${shortDate}, ${chats[i].text}, ${chats[i].handle}`
+            let linkInstance = `${shortDate}, ${link}, ${chats[i].handle}`
             if (checkIfContainsSync(completedPath, link) == false 
                     && checkIfContainsSync(linkPath, link) == false
                     && checkIfContainsSync(badLinksPath, link) == false) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
@@ -291,13 +308,14 @@ async function getRecentChats(chatStartDate) {
                 } 
 
                 let dupCheck = checkIfContainsSyncReturnLine(logPath, link)
-                if (checkIfContainsSync(logPath, linkInstance) ==false && chats[i].text != null && dupCheck != false ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
+                if (checkIfContainsSync(logPath, linkInstance) ==false && chats[i].text != null && dupCheck != false && checkIfContainsSync(duplicatePath, linkInstance) ==false && link !=' https://www.tiktok.com/t/ZTRvw4KyS/' ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
                 {
                    //link has already been submitted by somebody else
-                    const phoneNumber = '+19372435942'; // Replace with the phone number you want to send the message to
-                    const messageText = `VOID ${linkInstance}, link was previously found via ${dupCheck}`; // Replace with the text you want to send
+                    const phoneNumber = '+19372439400'; // Replace with the phone number you want to send the message to
+                    const messageText = `VOID ${linkInstance}, link was previously found on ${dupCheck}`; // Replace with the text you want to send
+                    bufferDuplicate.push(linkInstance)
 
-                    imessage.send(phoneNumber, messageText)
+                    send(phoneNumber, messageText)
                     .then(() => console.log('Message sent successfully!'))
                     .catch((err) => console.error('Error sending message:', err));
 
@@ -318,10 +336,17 @@ async function getRecentChats(chatStartDate) {
 
         for(let k=0; k< bufferChatLog.length; k++){
             writeChatLog(bufferChatLog[k]);  //write link to chatLog
-
-
-
       }
+
+      var dupLogger = fs.createWriteStream(duplicatePath, {
+        flags: 'a'})// 'a' means appending (old data will be preserved)
+    var writeDupLog = (line) => dupLogger.write(`\n${line}`);
+
+    for(let x=0; x< bufferDuplicate.length; x++){
+        writeDupLog(bufferDuplicate[x]);  //write link to chatLog
+  }
+
+
 
     //return chats
 }
@@ -358,7 +383,7 @@ async function getRecentSpecial(chatStartDate) {
         FROM message
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
         WHERE cache_roomnames = ${igChatID}              
-        AND (text LIKE "%tiktok.com%" AND text NOT LIKE "%Disliked%" OR text LIKE "%instagram.comhgbn%")
+        AND (text LIKE "%tiktok.com%" AND text NOT LIKE "%Disliked%" OR text LIKE "%instagram.com%")
         AND date > ${chatStartDate};
         ORDER BY date ASC;
         
@@ -378,9 +403,29 @@ async function getRecentSpecial(chatStartDate) {
                         second: '2-digit',
                         /* timeStyle: 'full'*/ })
                         let text = chats[i].text
-                        const urlPattern = /(https?:\/\/[^\s]+)/; 
-                        const match = text.match(urlPattern); 
-                        let link = match ? match[0] : null; //console.log(link);
+
+                        const urlPattern = /(https?:\/\/[^\s]+)/g;
+                        const matches = text.match(urlPattern);
+
+                        let link = "";
+
+                        if (matches && matches.length > 1) {
+                        const [link1, link2, ...restLinks] = matches;
+                        //console.log(`Link 1: ${link1}`);
+                        //console.log(`Link 2: ${link2}`);
+                        restLinks.forEach((link, index) => {
+                            //console.log(`Link ${index + 3}: ${link}`);
+                        });
+                        link = matches.join(",");
+                        } else {
+                        const links = matches ? matches[0] : null;
+                        //console.log(`Link: ${links}`);
+                        link = links;
+                        }
+
+                        //console.log(`All links: ${linksString}`);
+
+                      
 
                         if (checkIfContainsSync(completedPath, link) == false 
                         && checkIfContainsSync(linkPathSpecial, link) == false
@@ -489,4 +534,3 @@ module.exports = {
     getRecentSpecial,
     SUPPRESS_WARNINGS: false,
 }
-
