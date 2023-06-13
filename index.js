@@ -3,23 +3,28 @@ const yourUsername = 'socialscrape';
 const dropBoxFolder = '_socialScrape'
 const completedPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/masterCompletedLog.txt`
 const linkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/chatScrapeLinks.txt`
-const missedLinkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/missedLinks.txt`
-const missedLogPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/missedLinksLog.txt`
+//const missedLinkPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/missedLinks.txt`
+//const missedLogPath =  `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/missedLinksLog.txt`
 const logPath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/chatLog.txt`
-const specialLogPath ='/Users/socialscrape/Social Wake Dropbox/_socialScrape/logs/specialChatLog.txt'
+const specialLogPath =`/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/specialChatLog.txt`
 const badLinksPath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/badLinks.txt`
-const igScrapePath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/igScrape.txt`
+//const igScrapePath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/igScrape.txt`
 const linkPathSpecial = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/specialChatScrape.txt`
 const duplicatePath = `/Users/${yourUsername}/Social Wake Dropbox/${dropBoxFolder}/logs/duplicateLinks.txt`
 let bufferData = [];
 let bufferChatLog = [];
 let bufferDataSpecial = [];
+let bufferSpecialLog = [];
 let bufferDuplicate = [];
 
-// const chatID = '679112890556703100'
-// const ttOnlyChatID = "'chat652293730519823796'";
-// const igChatID = "'chat222048912579693603'"
-// const dateFromChatLinks = '679112890556703100';
+const ttOnlyChat = "'chat652293730519823796'"
+const igSpecialChat = "'chat222048912579693603'"
+
+const newClipsChat = "'chat111361966382305246'"
+const foreignChat = "'chat587918592434941822'"
+const thumbsChat = "'chat862372514310478630'"
+const tagsChat = "'chat520420209340163432'"
+const skChat = "'chat951176133862785356'"
 
 const fs = require('fs')
 const osa = require('osa2')
@@ -212,21 +217,8 @@ function listen() {
     return emitter
 }
 
-async function getRecentChats(chatStartDate) { 
+async function getRecentChats(chatStartDate,chat1,chat2,chat3,chat4) { 
 
-    // var missedChatLogger = fs.createWriteStream(missedLogPath, {
-    //     flags: 'a' })
-    // var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
-
-    // var missedChatLinks = fs.createWriteStream(missedLinkPath, {
-    //     flags: 'a'})
-    // var writeMissedChatLinks = (line) => missedChatLinks.write(`\n${line}`);
-
-    const chatID = "'chat652293730519823796'"
-    const ttOnlyChatID = "'chat652293730519823796'";
-    const igChatID = "'chat222048912579693603'"
-    const dateFromChatLinks = '679112890556703100';
-  
     const db = await messagesDb.open()
       
     const query = `
@@ -239,20 +231,17 @@ async function getRecentChats(chatStartDate) {
             cache_roomnames
         FROM message
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
-        WHERE cache_roomnames = ${chatID}               
-        AND (text LIKE "%tiktok.com%" AND text NOT LIKE "%Disliked%" OR text LIKE "%instagram.com%")
+        WHERE (cache_roomnames = ${chat1} OR cache_roomnames = ${chat2} OR cache_roomnames = ${chat3} OR cache_roomnames = ${chat4} )             
+        AND (text LIKE "%https://%" AND text NOT LIKE "%Disliked%")
         AND date > ${chatStartDate};
         ORDER BY date ASC;
         
-    `   //pull all text messages from clip chat that say "tiktok.com"
-        //AND date > 679287919176346100 - date of bad link
-        //LIMIT ${limit}
+    `   
     const chats = await db.all(query)
 
     
-
-    for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
-        {
+    for (let i = 0; i < chats.length; i++){//loop through ${limit} chats
+        
             let fullDate = fromAppleTime(chats[i].date)
             let shortDate = fullDate.toLocaleString('en-US', {
                 timeZone: 'America/New_York',
@@ -284,35 +273,39 @@ async function getRecentChats(chatStartDate) {
              // console.log("Link is a string");
             }
 
-            let linkInstance = `${shortDate}, ${link}, ${chats[i].handle}`
+            let chatID = '';
+
+            if (chats[i].cache_roomnames == 'chat111361966382305246')
+            {chatID = "NC"}
+            if (chats[i].cache_roomnames == 'chat587918592434941822')
+            {chatID = "FC"}
+            if (chats[i].cache_roomnames == 'chat862372514310478630')
+            {chatID = "TH"}
+            if (chats[i].cache_roomnames == 'chat520420209340163432')
+            {chatID = "TAG"}
+            if (chats[i].cache_roomnames == 'chat951176133862785356')
+            {chatID = "SK"}
+            
+           
+
+            let linkInstance = `${shortDate}, ${link}, ${chats[i].handle}, ${chatID}`
             if (checkIfContainsSync(completedPath, link) == false 
                     && checkIfContainsSync(linkPath, link) == false
-                    && checkIfContainsSync(badLinksPath, link) == false) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
-                {
-                    
-                   // writeLink(chats[i].text);  //write link to chatScrapeLinks.txt
-                   bufferData.push(link) 
-                   //console.log(chats[i].date)
-                   // writeMissedChatLinks(`${chats[i].text}`);  //just a second source for troubleshooting, meant to be deleted everytime?
-                    console.log(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`)
-                    //console.log(chats[i].text)
-
+                    && checkIfContainsSync(badLinksPath, link) == false){ //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
+                
+                   //bufferData.push(chatScrapeInstance) <<< future update
+                   bufferData.push(link)
+                   bufferChatLog.push(linkInstance);
+                   console.log(linkInstance)
                 }
-                if (checkIfContainsSync(logPath, link) ==false && chats[i].text != null ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
-                {
-                   
-                    bufferChatLog.push(`${shortDate}, ${link}, ${chats[i].handle}`);
-                    // writeChatLog(`${shortDate}, ${link}, ${chats[i].handle}`); //if not not logged, log it (chatLog.txt)
-                    // writeMissedChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`); //if not not logged, log it (missedChatLog.txt)
-                    
-                } 
+               
+                let dupCheck = checkIfContainsSyncReturnLine(logPath, link);
 
-                let dupCheck = checkIfContainsSyncReturnLine(logPath, link)
                 if (checkIfContainsSync(logPath, linkInstance) ==false && chats[i].text != null && dupCheck != false && checkIfContainsSync(duplicatePath, linkInstance) ==false && link !=' https://www.tiktok.com/t/ZTRvw4KyS/' ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
                 {
                    //link has already been submitted by somebody else
-                    const phoneNumber = '+19372439400'; // Replace with the phone number you want to send the message to
-                    const messageText = `VOID ${linkInstance}, link was previously found on ${dupCheck}`; // Replace with the text you want to send
+                    const phoneNumber = '+19372439400'; 
+                    const messageText = `VOID ${linkInstance}, link was previously found on ${dupCheck}`; 
                     bufferDuplicate.push(linkInstance)
 
                     send(phoneNumber, messageText)
@@ -321,57 +314,45 @@ async function getRecentChats(chatStartDate) {
 
                 } 
         }// end of loop
-        var linkScrape = fs.createWriteStream(linkPath, {
+
+
+     //Writing data to text files after checking against them to avoid write while reading complications..
+     //___________________________________________________________________________________________________
+
+     //WRITE LINKS STORED IN bufferData TO TEXT FILE   
+    var linkScrape = fs.createWriteStream(linkPath, {
             flags: 'a'}) 
-        var writeLink = (line) => linkScrape.write(`\n${line}`);
-        for(let j=0; j< bufferData.length; j++){
+    var writeLink = (line) => linkScrape.write(`\n${line}`);
+    for(let j=0; j< bufferData.length; j++){
               writeLink(bufferData[j]);  //write link to chatScrapeLinks.txt
-
-
-
-        }
-        var chatLogger = fs.createWriteStream(logPath, {
+    }
+    //WRITE LOGS STORED IN bufferChatLog TO TEXT FILE 
+    var chatLogger = fs.createWriteStream(logPath, {
             flags: 'a'})// 'a' means appending (old data will be preserved)
-        var writeChatLog = (line) => chatLogger.write(`\n${line}`);
+    var writeChatLog = (line) => chatLogger.write(`\n${line}`);
 
-        for(let k=0; k< bufferChatLog.length; k++){
-            writeChatLog(bufferChatLog[k]);  //write link to chatLog
-      }
-
-      var dupLogger = fs.createWriteStream(duplicatePath, {
+    for(let k=0; k< bufferChatLog.length; k++){
+            writeChatLog(bufferSpecialLog[k]);  //write link to chatLog
+    }
+    //WRITE DUPLICATE LINKS STORED IN bufferDuplicate TO TEXT FILE
+    var dupLogger = fs.createWriteStream(duplicatePath, {
         flags: 'a'})// 'a' means appending (old data will be preserved)
     var writeDupLog = (line) => dupLogger.write(`\n${line}`);
 
     for(let x=0; x< bufferDuplicate.length; x++){
         writeDupLog(bufferDuplicate[x]);  //write link to chatLog
-  }
+    }
 
 
 
     //return chats
 }
 //______________________________________________________________________________________________
-async function getRecentSpecial(chatStartDate) { 
+async function getRecentSpecial(chatStartDate, chat1) { 
    
-    var chatLogger = fs.createWriteStream(specialLogPath, {
-        flags: 'a'})// 'a' means appending (old data will be preserved)
-    var writeChatLog = (line) => chatLogger.write(`\n${line}`);
-
-    // var missedChatLogger = fs.createWriteStream(missedLogPath, {
-    //     flags: 'a' })
-    // var writeMissedChatLog = (line) => missedChatLogger.write(`\n${line}`);
-
-    // var missedChatLinks = fs.createWriteStream(missedLinkPath, {
-    //     flags: 'a'})
-    // var writeMissedChatLinks = (line) => missedChatLinks.write(`\n${line}`);
-
-    const chatID = "'chat652293730519823796'"
-    const ttOnlyChatID = "'chat652293730519823796'";
-    const igChatID = "'chat222048912579693603'"
-    const dateFromChatLinks = '679112890556703100';
-  
+   
     const db = await messagesDb.open()
-      
+
     const query = `
         SELECT
             guid,
@@ -382,8 +363,8 @@ async function getRecentSpecial(chatStartDate) {
             cache_roomnames
         FROM message
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
-        WHERE cache_roomnames = ${igChatID}              
-        AND (text LIKE "%tiktok.com%" AND text NOT LIKE "%Disliked%" OR text LIKE "%instagram.com%")
+        WHERE cache_roomnames = ${chat1}              
+        AND (text LIKE "%https://%" AND text NOT LIKE "%Disliked%")
         AND date > ${chatStartDate};
         ORDER BY date ASC;
         
@@ -404,15 +385,14 @@ async function getRecentSpecial(chatStartDate) {
                         /* timeStyle: 'full'*/ })
                         let text = chats[i].text
 
+                        //pull a link from the text (if text contained any extra text besides the link)
                         const urlPattern = /(https?:\/\/[^\s]+)/g;
                         const matches = text.match(urlPattern);
-
                         let link = "";
 
                         if (matches && matches.length > 1) {
                         const [link1, link2, ...restLinks] = matches;
-                        //console.log(`Link 1: ${link1}`);
-                        //console.log(`Link 2: ${link2}`);
+                        //console.log(`Link 1: ${link1}`);console.log(`Link 2: ${link2}`);
                         restLinks.forEach((link, index) => {
                             //console.log(`Link ${index + 3}: ${link}`);
                         });
@@ -424,53 +404,83 @@ async function getRecentSpecial(chatStartDate) {
                         }
 
                         //console.log(`All links: ${linksString}`);
-
-                      
-
-                        if (checkIfContainsSync(completedPath, link) == false 
+                        let chatID = '';
+                        if (chats[i].cache_roomnames == 'chat111361966382305246')
+                        {chatID = "NC"}
+                        if (chats[i].cache_roomnames == 'chat587918592434941822')
+                        {chatID = "FC"}
+                        if (chats[i].cache_roomnames == 'chat862372514310478630')
+                        {chatID = "TH"}
+                        if (chats[i].cache_roomnames == 'chat520420209340163432')
+                        {chatID = "TAG"}
+                        if (chats[i].cache_roomnames == 'chat951176133862785356')
+                        {chatID = "SK"}
+                        // let chatScrapeInstance = `${link}, ${chatID}, ${chats[i].handle}, ${shortDate}`;
+                        let linkInstance = `${shortDate}, ${link}, ${chats[i].handle}, ${chatID}`
+                    if (checkIfContainsSync(completedPath, link) == false 
                         && checkIfContainsSync(linkPathSpecial, link) == false
-                        && checkIfContainsSync(badLinksPath, link) == false) //if link[i] is not in completedLog AND not pulled from chat -if not loaded for next run (in chatScrapeLinks.txt)
-                    {
-                        
-                       // writeLink(chats[i].text);  //write link to chatScrapeLinks.txt
-                       bufferDataSpecial.push(link) 
-                       //console.log(chats[i].date)
-                       // writeMissedChatLinks(`${chats[i].text}`);  //just a second source for troubleshooting, meant to be deleted everytime?
-                        console.log(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`)
-                        //console.log(chats[i].text)
-    
+                        && checkIfContainsSync(badLinksPath, link) == false){ 
+                        //if link[i] is not in masterCompletedLog AND not already in chatScrapeLinks AND not in badLinks.txt already
+                    
+                        // bufferDataSpecial.push(chatScrapeInstance) << future for chat update
+                        bufferDataSpecial.push(link)
+                        bufferSpecialLog.push(linkInstance);
+                        console.log(linkInstance)
                     }
-                    if (checkIfContainsSync(logPath, link) ==false && chats[i].text != null ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
+
+                    let dupCheck = checkIfContainsSyncReturnLine(logPath, link)
+                    if (dupCheck != false && checkIfContainsSync(specialLogPath, linkInstance) ==false && link != "" &&  checkIfContainsSync(duplicatePath, linkInstance) ==false && link !=' https://www.tiktok.com/t/ZTRvw4KyS/' ) //if chatlog doesnt contain the link or these two wierd texts that keep popping up -quick fix
                     {
-                        writeChatLog(`${shortDate}, ${link}, ${chats[i].handle}`); //if not not logged, log it (chatLog.txt)
-                        // writeMissedChatLog(`${shortDate}, ${chats[i].text}, ${chats[i].handle}`); //if not not logged, log it (missedChatLog.txt)
-                        
+                       //link has already been submitted by somebody else
+                        const phoneNumber = '+19372435942'; // Replace with the phone number you want to send the message to
+                        const messageText = `VOID ${linkInstance}, link was previously found on ${dupCheck}`; // Replace with the text you want to send
+                        bufferDuplicate.push(linkInstance)
+    
+                        send(phoneNumber, messageText)
+                        .then(() => console.log('Message sent successfully!'))
+                        .catch((err) => console.error('Error sending message:', err));
+    
                     } 
+
             }// end of loop
-            var linkScrapeSpecial = fs.createWriteStream(linkPathSpecial, {
-                flags: 'a'}) 
-            var writeLinkSpecial = (line) => linkScrapeSpecial.write(`\n${line}`);
-            for(let j=0; j< bufferDataSpecial.length; j++){
-                  writeLinkSpecial(bufferDataSpecial[j]);  //write link to chatScrapeLinks.txt
-            }
+
+
+    //WRITE LINKS STORED IN bufferData TO TEXT FILE   
+    var linkScrapeSpecial = fs.createWriteStream(linkPathSpecial, {
+        flags: 'a'}) 
+    var writeLinkSpecial = (line) => linkScrapeSpecial.write(`\n${line}`);
+    for(let j=0; j< bufferDataSpecial.length; j++){
+        writeLinkSpecial(bufferDataSpecial[j]);  //write link to chatScrapeLinks.txt
+    }
+
+    //WRITE LOGS STORED IN bufferChatLog TO TEXT FILE 
+    var specialLogger = fs.createWriteStream(specialLogPath, {
+            flags: 'a'})// 'a' means appending (old data will be preserved)
+    var writeSpecialLog = (line) => specialLogger.write(`\n${line}`);
+    for(let k=0; k< bufferSpecialLog.length; k++){
+            writeSpecialLog(bufferChatLog[k]);  //write link to chatLog
+    }
+
+    //WRITE DUPLICATE LINKS STORED IN bufferDuplicate TO TEXT FILE
+    var dupLogger = fs.createWriteStream(duplicatePath, {
+        flags: 'a'})// 'a' means appending (old data will be preserved)
+    var writeDupLog = (line) => dupLogger.write(`\n${line}`);
+
+    for(let x=0; x< bufferDuplicate.length; x++){
+        writeDupLog(bufferDuplicate[x]);  //write link to chatLog
+    }
+
     //return chats
 }
 //______________________________________________________________________________________________
 
-async function globalLog(chatStartDate, chatEndDate) {
+// async function globalLog(chatStartDate, chatEndDate, newClipsChat,tagsChat,thumbsChat,skChat) {
+async function globalLog(chatStartDate, /*chatEndDate,*/ chat1, chat2, chat3, chat4, chat5, chat6) {
    
-   //console.log("We'ere here")
-    const ttID = "'chat652293730519823796'"
-    const igID = "'chat222048912579693603'"
-    const otherID = "'chat951176133862785356'"
-    const dateApple = "'683596800000000000'"
+    
+
     const db = await messagesDb.open()
-      
-    const chatID = "'chat652293730519823796'"
-
-
-  
-  
+   
     const query = `
         SELECT
             guid,
@@ -481,28 +491,28 @@ async function globalLog(chatStartDate, chatEndDate) {
             cache_roomnames
         FROM message
         LEFT OUTER JOIN handle ON message.handle_id = handle.ROWID
-        WHERE (cache_roomnames = ${ttID} OR cache_roomnames = ${igID} OR cache_roomnames = ${otherID} )
+        WHERE (cache_roomnames = ${chat1} OR cache_roomnames = ${chat2} OR cache_roomnames = ${chat3} OR cache_roomnames = ${chat4} OR cache_roomnames = ${chat5} OR cache_roomnames = ${chat6} )
         AND (text LIKE "%tiktok.com%" OR text LIKE "%instagram.com%")
-        AND (date > ${chatStartDate} AND date < ${chatEndDate})
+        AND (date > ${chatStartDate} )
         
         ORDER BY date ASC;
         
     `
+    //AND date < ${chatEndDate}
 
-
-    //august 31st AND date > ${dateApple}
 
     const chats = await db.all(query)
-    // let chats = await db.all(query)
+   
     // for (let i = 0; i < chats.length; i++)//loop through ${limit} chats
     // {
     //     console.log(chats[i].date)
     // }
    
-      
-
     return chats
 }
+
+
+
 //if this location contains this string, return true, if not return false
 function checkIfContainsSync(filename, str) {
 
@@ -520,7 +530,6 @@ function checkIfContainsSyncReturnLine(filename, str) {
             return line;
         }
     }
-
     return false;
 }
 
